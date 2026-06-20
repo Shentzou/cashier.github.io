@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Cashier POS" />
+<meta name="theme-color" content="#378ADD" />
+<title>Cashier POS</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f4f4f2; --bg3: #ebebea;
+    --text: #1a1a19; --text2: #5f5e5a; --text3: #888780;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --info-bg: #e6f1fb; --info-text: #185fa5; --info-border: rgba(24,95,165,0.3);
+    --success-bg: #eaf3de; --success-text: #3b6d11; --success-border: rgba(59,109,17,0.3);
+    --danger-bg: #fcebeb; --danger-text: #a32d2d; --danger-border: rgba(163,45,45,0.3);
+    --warn-bg: #faeeda; --warn-text: #854f0b; --warn-border: rgba(133,79,11,0.3);
+    --radius: 8px; --radius-lg: 12px;
+    --accent: #378ADD;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c; --bg2: #272725; --bg3: #2e2e2b;
+      --text: #f0efea; --text2: #b4b2a9; --text3: #888780;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+      --info-bg: #0c447c; --info-text: #b5d4f4; --info-border: rgba(181,212,244,0.3);
+      --success-bg: #27500a; --success-text: #c0dd97; --success-border: rgba(192,221,151,0.3);
+      --danger-bg: #791f1f; --danger-text: #f7c1c1; --danger-border: rgba(247,193,193,0.3);
+      --warn-bg: #633806; --warn-text: #fac775; --warn-border: rgba(250,199,117,0.3);
+      --accent: #5ea8e8;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+  h1 { font-size: 20px; font-weight: 500; }
+
+  /* ─── SHARED HEADER ─── */
+  header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+  .header-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .role-badge { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; letter-spacing: 0.04em; }
+  .role-badge.admin { background: var(--warn-bg); color: var(--warn-text); border: 0.5px solid var(--warn-border); }
+  .role-badge.viewer { background: var(--info-bg); color: var(--info-text); border: 0.5px solid var(--info-border); }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success-text); display: inline-block; flex-shrink: 0; animation: blink 2.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ─── BUTTONS ─── */
+  .btn { padding: 7px 14px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: var(--bg); font-size: 13px; cursor: pointer; color: var(--text); font-family: inherit; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .btn:hover { background: var(--bg2); }
+  .btn-primary { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); font-weight: 500; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-danger { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+  .btn-danger:hover { opacity: 0.85; }
+  .btn-success { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); font-weight: 500; }
+  .btn-success:hover { opacity: 0.85; }
+
+  /* ─── ADMIN LOGIN MODAL ─── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 9000; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(3px);
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg); border-radius: 16px; padding: 1.75rem 2rem;
+    border: 0.5px solid var(--border2); width: 100%; max-width: 340px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18); animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(16px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .modal-sub { font-size: 13px; color: var(--text3); margin-bottom: 1.25rem; }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+  input[type="text"], input[type="number"], input[type="password"] {
+    width: 100%; padding: 8px 10px; border-radius: var(--radius);
+    border: 0.5px solid var(--border2); background: var(--bg); color: var(--text);
+    font-size: 13px; font-family: inherit; outline: none;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(55,138,221,0.15); }
+  .login-error { background: var(--danger-bg); color: var(--danger-text); border: 0.5px solid var(--danger-border); border-radius: var(--radius); padding: 8px 12px; font-size: 13px; margin-bottom: 1rem; display: none; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+  /* ─── VIEWER SCREEN ─── */
+  #viewer-screen { display: flex; flex-direction: column; min-height: 100vh; }
+  .viewer-body {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.5rem; padding: 2rem; text-align: center;
+  }
+  .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--success-text); font-weight: 600; background: var(--success-bg); padding: 5px 12px; border-radius: 999px; border: 0.5px solid var(--success-border); }
+  .viewer-total-card {
+    background: var(--bg); border-radius: 20px; padding: 2.5rem 3rem;
+    border: 0.5px solid var(--border2); box-shadow: 0 4px 32px rgba(0,0,0,0.06);
+    min-width: 280px; transition: transform 0.15s;
+  }
+  .viewer-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 500; margin-bottom: 0.5rem; }
+  .viewer-amount { font-size: 42px; font-weight: 700; color: var(--accent); line-height: 1.1; margin-bottom: 0.25rem; transition: color 0.3s; }
+  .viewer-amount.flash { color: var(--success-text); }
+  .viewer-sub { font-size: 13px; color: var(--text2); }
+  .viewer-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 480px; }
+  .viewer-stat { background: var(--bg); border-radius: var(--radius-lg); padding: 14px; border: 0.5px solid var(--border); }
+  .viewer-stat-val { font-size: 22px; font-weight: 600; }
+  .viewer-stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .updated-at { font-size: 11px; color: var(--text3); }
+
+  /* ─── ADMIN APP ─── */
+  #app-screen { display: none; }
+  .pos { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 57px); }
+  .left { overflow-y: auto; padding: 1.25rem; }
+  .right { background: var(--bg2); border-left: 0.5px solid var(--border); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+  .tab { padding: 7px 16px; font-size: 13px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: none; cursor: pointer; color: var(--text2); font-family: inherit; }
+  .tab.active { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); font-weight: 500; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .add-form { background: var(--bg2); border-radius: var(--radius); padding: 1rem; margin-bottom: 1.25rem; display: grid; grid-template-columns: 1fr 120px 90px auto; gap: 8px; align-items: end; }
+  .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 1rem; }
+  .item-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; text-align: center; transition: border-color 0.15s; }
+  .item-card:hover { border-color: var(--accent); }
+  .item-card .iname { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .item-card .iprice { font-size: 12px; color: var(--text2); }
+  .item-card .istock { font-size: 11px; margin-top: 4px; padding: 2px 6px; border-radius: 999px; display: inline-block; }
+  .stock-ok { background: var(--success-bg); color: var(--success-text); }
+  .stock-low { background: var(--warn-bg); color: var(--warn-text); }
+  .stock-out { background: var(--danger-bg); color: var(--danger-text); }
+  .item-card.out-of-stock { opacity: 0.5; cursor: not-allowed; }
+  .cart-items { flex: 1; overflow-y: auto; }
+  .cart-row { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 0.5px solid var(--border); }
+  .cart-row:last-child { border-bottom: none; }
+  .cart-name { flex: 1; font-size: 13px; }
+  .qty-ctrl { display: flex; align-items: center; gap: 4px; }
+  .qty-btn { width: 24px; height: 24px; border-radius: 6px; border: 0.5px solid var(--border2); background: var(--bg); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; color: var(--text2); font-family: inherit; }
+  .qty-btn:hover { background: var(--bg3); }
+  .qty-num { width: 24px; text-align: center; font-size: 13px; font-weight: 500; }
+  .cart-price { font-size: 13px; font-weight: 500; min-width: 80px; text-align: right; }
+  .cart-rm { color: var(--danger-text); cursor: pointer; font-size: 17px; padding: 2px; }
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 10px 0; }
+  .sum-total { display: flex; justify-content: space-between; font-size: 17px; font-weight: 500; margin-top: 6px; }
+  .empty { text-align: center; padding: 2.5rem 0; color: var(--text3); font-size: 13px; }
+  .empty i { font-size: 32px; display: block; margin-bottom: 8px; }
+  .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1.25rem; }
+  .metric { background: var(--bg2); border-radius: var(--radius); padding: 10px 12px; }
+  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+  .metric-val { font-size: 20px; font-weight: 500; }
+  .box { border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
+  .box-head { display: grid; gap: 8px; padding: 8px 12px; background: var(--bg2); font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .box-row { display: grid; gap: 8px; padding: 9px 12px; border-top: 0.5px solid var(--border); align-items: center; font-size: 13px; }
+  .chart-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .chart-label { font-size: 12px; color: var(--text2); width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chart-track { flex: 1; background: var(--bg2); border-radius: 3px; height: 14px; overflow: hidden; }
+  .chart-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.5s ease; }
+  .chart-val { font-size: 12px; color: var(--text2); width: 80px; text-align: right; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 500; background: var(--success-bg); color: var(--success-text); }
+  .prod-row { display: grid; grid-template-columns: 1fr 110px 80px auto; gap: 8px; padding: 9px 12px; border-top: 0.5px solid var(--border); align-items: center; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 10px 18px; font-size: 13px; z-index: 9999; opacity: 0; transition: opacity 0.25s; pointer-events: none; color: var(--text); }
+
+  @media (max-width: 700px) {
+    .pos { grid-template-columns: 1fr; height: auto; }
+    .right { border-left: none; border-top: 0.5px solid var(--border); min-height: 320px; }
+    .add-form { grid-template-columns: 1fr 1fr; }
+    .viewer-stats { grid-template-columns: 1fr 1fr; }
+    .viewer-amount { font-size: 32px; }
+    .viewer-total-card { padding: 2rem 1.5rem; min-width: unset; width: 100%; }
+  }
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    body { padding-bottom: env(safe-area-inset-bottom); }
+    header { padding-top: max(14px, env(safe-area-inset-top)); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     VIEWER SCREEN  (default, no login)
+══════════════════════════════════════ -->
+<div id="viewer-screen">
+  <header>
+    <i class="ti ti-cash-register" style="font-size:22px;color:var(--accent);"></i>
+    <h1>Cashier POS</h1>
+    <div class="header-right">
+      <span class="sync-dot" title="Live updates active"></span>
+      <span style="font-size:12px;color:var(--text3);" id="viewer-clock"></span>
+      <span class="role-badge viewer"><i class="ti ti-eye" style="font-size:10px;"></i> LIVE VIEW</span>
+      <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="openLoginModal()">
+        <i class="ti ti-shield-lock"></i> Admin
+      </button>
+    </div>
+  </header>
+
+  <div class="viewer-body">
+    <div class="live-pill">
+      <span class="sync-dot"></span> Live — updates every 5 seconds
+    </div>
+
+    <div class="viewer-total-card">
+      <div class="viewer-label">Total Sales Today</div>
+      <div class="viewer-amount" id="v-total">Rp 0</div>
+      <div class="viewer-sub" id="v-orders">0 orders today</div>
+    </div>
+
+    <div class="viewer-stats">
+      <div class="viewer-stat">
+        <div class="viewer-stat-val" id="v-items">0</div>
+        <div class="viewer-stat-label">Items Sold</div>
+      </div>
+      <div class="viewer-stat">
+        <div class="viewer-stat-val" id="v-avg">Rp 0</div>
+        <div class="viewer-stat-label">Avg. Order</div>
+      </div>
+      <div class="viewer-stat">
+        <div class="viewer-stat-val" id="v-products">0</div>
+        <div class="viewer-stat-label">Products</div>
+      </div>
+    </div>
+
+    <div class="updated-at" id="v-updated">Waiting for data…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ADMIN LOGIN MODAL
+══════════════════════════════════════ -->
+<div class="modal-backdrop" id="login-modal" onclick="closeModalIfBackdrop(event)">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-shield-lock" style="color:var(--warn-text);"></i> Admin Login</div>
+    <div class="modal-sub">Enter your credentials to access the admin panel.</div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="admin" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') doLogin()" />
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <div class="modal-actions">
+      <button class="btn" style="flex:1;justify-content:center;" onclick="closeLoginModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="doLogin()">
+        <i class="ti ti-login"></i> Sign In
+      </button>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:1rem;text-align:center;">
+      Default: admin / admin1234
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ADMIN APP SCREEN
+══════════════════════════════════════ -->
+<div id="app-screen">
+  <header>
+    <i class="ti ti-cash-register" style="font-size:22px;color:var(--accent);"></i>
+    <h1>Cashier POS</h1>
+    <div class="header-right">
+      <span class="sync-dot" id="admin-sync-dot" title="Live sync active"></span>
+      <span style="font-size:12px;color:var(--text3);" id="admin-clock"></span>
+      <span class="role-badge admin"><i class="ti ti-shield-lock" style="font-size:10px;"></i> ADMIN</span>
+      <button class="btn" style="padding:5px 10px;font-size:12px;" onclick="adminLogout()">
+        <i class="ti ti-logout"></i> Logout
+      </button>
+    </div>
+  </header>
+
+  <div class="pos">
+    <div class="left">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('register')"><i class="ti ti-layout-grid"></i> Register</button>
+        <button class="tab" onclick="switchTab('products')"><i class="ti ti-package"></i> Products</button>
+        <button class="tab" onclick="switchTab('sales')"><i class="ti ti-chart-bar"></i> Today's Sales</button>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="panel active" id="panel-register">
+        <div style="position:relative;margin-bottom:1rem;">
+          <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text3);pointer-events:none;"></i>
+          <input type="text" id="search-input" placeholder="Search items…" oninput="renderMenu()" style="padding-left:34px;width:100%;" />
+        </div>
+        <div class="section-label" id="menu-label">Tap item to add</div>
+        <div class="items-grid" id="menu-grid"></div>
+      </div>
+
+      <!-- PRODUCTS -->
+      <div class="panel" id="panel-products">
+        <div class="section-label">Add new product</div>
+        <div class="add-form">
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Name</label>
+            <input type="text" id="new-name" placeholder="e.g. Coffee" />
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Price (Rp)</label>
+            <input type="number" id="new-price" placeholder="15000" min="0" />
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Stock</label>
+            <input type="number" id="new-stock" placeholder="50" min="0" />
+          </div>
+          <button class="btn btn-primary" onclick="addProduct()" style="align-self:flex-end;"><i class="ti ti-plus"></i> Add</button>
+        </div>
+        <div class="section-label">All products</div>
+        <div id="product-list"></div>
+      </div>
+
+      <!-- SALES -->
+      <div class="panel" id="panel-sales">
+        <div class="metric-row" id="summary-metrics"></div>
+        <div class="section-label">Items sold today</div>
+        <div id="items-sold-list"></div>
+        <div class="section-label" id="chart-label" style="display:none;">Revenue by item</div>
+        <div id="income-chart" style="margin-bottom:1.25rem;"></div>
+        <div class="section-label">Transactions</div>
+        <div id="txn-list"></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div style="font-size:15px;font-weight:500;display:flex;align-items:center;gap:8px;">
+        <i class="ti ti-receipt"></i> Current order
+      </div>
+      <div class="cart-items" id="cart-display"></div>
+      <div>
+        <hr>
+        <div class="sum-total"><span>Total</span><span id="total-amt">Rp 0</span></div>
+        <hr>
+        <button class="btn btn-success" style="width:100%;margin-top:8px;padding:10px;justify-content:center;" onclick="checkout()">
+          <i class="ti ti-check"></i> Charge & Complete
+        </button>
+        <button class="btn btn-danger" style="width:100%;margin-top:6px;justify-content:center;" onclick="clearCart()">
+          <i class="ti ti-trash"></i> Clear order
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+import { getDatabase, ref, onValue, set, get }
+  from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js';
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  STEP 1 — Paste your Firebase config here                   ║
+// ║                                                              ║
+// ║  Go to: console.firebase.google.com                         ║
+// ║  → New project → Add web app → copy firebaseConfig          ║
+// ║  → Build → Realtime Database → Create database              ║
+// ║    (choose test mode for now, lock rules later)             ║
+// ║                                                              ║
+// ║  ⚠ IMPORTANT — databaseURL is REQUIRED.                     ║
+// ║  Open Build → Realtime Database in the console: the exact   ║
+// ║  URL is shown at the top of that page, e.g.                 ║
+// ║  https://kasir-99f9e-default-rtdb.asia-southeast1.          ║
+// ║  firebasedatabase.app  — copy it EXACTLY (region included). ║
+// ║  Without this, devices write to nothing and nothing ever    ║
+// ║  syncs or survives a refresh, even though no error is shown.║
+// ╚══════════════════════════════════════════════════════════════╝
+const firebaseConfig = {
+    apiKey: "AIzaSyBpyEvqMc8pejK7OzhcIwNF7tNnltz39Zs",
+    authDomain: "kasir-99f9e.firebaseapp.com",
+    databaseURL: "https://kasir-d934b-default-rtdb.asia-southeast1.firebasedatabase.app/",
+    projectId: "kasir-99f9e",
+    storageBucket: "kasir-99f9e.firebasestorage.app",
+    messagingSenderId: "394227755846",
+    appId: "1:394227755846:web:a8497117a2405f0f449347",
+    measurementId: "G-QV0PB97PPW"
+};
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  STEP 2 — Realtime Database rules                            ║
+// ║  In the console: Build → Realtime Database → Rules, paste:   ║
+// ║  {                                                            ║
+// ║    "rules": { "pos": { ".read": true, ".write": true } }      ║
+// ║  }                                                             ║
+// ║  then click Publish. (Default "locked" rules block every     ║
+// ║  device silently — this is the #1 reason sync looks broken.) ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+// ══════════════════════════════════════
+// CREDENTIALS (change these!)
+// ══════════════════════════════════════
+const ADMIN_CREDENTIALS = { username: 'admin', password: 'admin1234' };
+
+// ══════════════════════════════════════
+// DEFAULT STATE (used only on first run)
+// ══════════════════════════════════════
+const DEFAULT_STATE = {
+  products: [
+    {id:1,name:'Coffee',   price:15000,stock:50},
+    {id:2,name:'Tea',      price:10000,stock:50},
+    {id:3,name:'Sandwich', price:25000,stock:30},
+    {id:4,name:'Cake',     price:20000,stock:20},
+    {id:5,name:'Juice',    price:18000,stock:40},
+    {id:6,name:'Water',    price:5000, stock:100},
+  ],
+  cart: [], transactions: [], nextId: 7
+};
+
+// ══════════════════════════════════════
+// LOCAL CACHE — always on, regardless of Firebase status.
+// This is what guarantees that a refresh NEVER loses sales/stock:
+// every save writes here first, and the page boots from here
+// instantly, before any network round-trip.
+// ══════════════════════════════════════
+const LS_KEY = 'pos_v2';
+const BC = new BroadcastChannel('pos_offline'); // same-device tab sync, always available
+const lsLoad = () => { try { const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):null; } catch(e){return null;} };
+const lsSave = (s) => { try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch(e){} };
+
+// Loaded data (old localStorage entries, a half-written Firebase value, etc.)
+// can be missing fields. Without this, a missing `transactions` array crashes
+// every render with "Cannot read properties of undefined (reading 'filter')".
+function normalizeState(s) {
+  const d = DEFAULT_STATE;
+  if (!s || typeof s !== 'object') return JSON.parse(JSON.stringify(d));
+  const products = Array.isArray(s.products) ? s.products : JSON.parse(JSON.stringify(d.products));
+  const maxId = products.reduce((m,p)=>Math.max(m, Number(p?.id)||0), 0);
+  return {
+    products,
+    cart: Array.isArray(s.cart) ? s.cart : [],
+    transactions: Array.isArray(s.transactions) ? s.transactions : [],
+    nextId: Number.isFinite(s.nextId) ? s.nextId : maxId + 1
+  };
+}
+
+let state = normalizeState(lsLoad());
+let fbRef = null;
+let isWriting = false; // prevent remote echo re-triggering save
+
+// ══════════════════════════════════════
+// FIREBASE INIT
+// ══════════════════════════════════════
+const NOT_CONFIGURED = firebaseConfig.apiKey === 'PASTE_YOUR_API_KEY'
+  || !firebaseConfig.databaseURL
+  || firebaseConfig.databaseURL.indexOf('PASTE_YOUR') === 0;
+
+function localOnlyFallback(reason) {
+  // Every device falls back to this if Firebase isn't usable, so the app
+  // still works (synced across tabs on THIS device, persisted on refresh) —
+  // it just won't sync across separate devices until Firebase is fixed.
+  window.saveState = () => { lsSave(state); BC.postMessage({type:'update',state}); onStateChange(false); };
+  BC.onmessage = ({data}) => { if (data?.type==='update') { state=normalizeState(data.state); lsSave(state); onStateChange(true); } };
+  setSyncStatus('error', reason);
+}
+
+if (NOT_CONFIGURED) {
+  console.warn('[POS] Firebase not configured (missing databaseURL) — running local-only');
+  showSetupBanner('not-configured');
+  localOnlyFallback('Firebase not configured — this device only.');
+
+} else {
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app, firebaseConfig.databaseURL);
+    fbRef      = ref(db, 'pos/state');
+
+    let resolved = false;
+    const connTimeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn('[POS] Firebase did not respond in time — check databaseURL/rules. Falling back to local-only.');
+        showSetupBanner('error', 'Could not reach Firebase (timed out). Check your databaseURL and Database Rules.');
+        localOnlyFallback('Connection timed out — this device only.');
+      }
+    }, 7000);
+
+    // Real-time connection state, separate from permission errors on our own path
+    onValue(ref(db, '.info/connected'), (snap) => {
+      if (snap.val() === true) setSyncStatus('online');
+    });
+
+    // Listen for any change from any device — this is the magic, when it works
+    onValue(fbRef, (snapshot) => {
+      resolved = true; clearTimeout(connTimeout);
+      setSyncStatus('online');
+      if (isWriting) return; // skip our own writes
+      const data = snapshot.val();
+      if (data) {
+        state = normalizeState(data);
+        lsSave(state);
+        onStateChange(true);
+      }
+    }, (error) => {
+      resolved = true; clearTimeout(connTimeout);
+      console.error('[POS] Firebase read failed:', error);
+      const msg = error.code === 'PERMISSION_DENIED'
+        ? 'Permission denied — update Realtime Database Rules to allow read/write on "pos".'
+        : 'Firebase error: ' + error.message;
+      showSetupBanner('error', msg);
+      localOnlyFallback(msg);
+    });
+
+    // On first load, seed the DB if empty (with whatever we already have locally,
+    // so progress made before Firebase connected isn't thrown away)
+    get(fbRef).then(snapshot => {
+      if (!snapshot.exists()) set(fbRef, state).catch(()=>{});
+    }).catch(()=>{});
+
+    window.saveState = async () => {
+      lsSave(state); // persist locally FIRST — refresh-safe no matter what happens next
+      isWriting = true;
+      try {
+        await set(fbRef, state);
+        setSyncStatus('online');
+      } catch(e) {
+        console.error('Firebase write failed:', e);
+        const msg = e.code === 'PERMISSION_DENIED'
+          ? 'Permission denied — update Realtime Database Rules to allow read/write on "pos".'
+          : 'Firebase write failed: ' + e.message;
+        setSyncStatus('error', msg);
+      }
+      setTimeout(() => isWriting = false, 300);
+      BC.postMessage({type:'update',state}); // keep tabs on this device in sync immediately too
+      onStateChange(false); // update local UI immediately without waiting
+    };
+    BC.onmessage = ({data}) => { if (data?.type==='update' && !isWriting) { state=normalizeState(data.state); lsSave(state); onStateChange(true); } };
+
+  } catch(e) {
+    console.error('[POS] Firebase init failed:', e);
+    showSetupBanner('error', 'Firebase failed to initialize: ' + e.message);
+    localOnlyFallback('Firebase init failed — this device only.');
+  }
+}
+
+// Start the app itself in its own try/catch, completely separate from Firebase
+// setup above — so a bug here is never confused with a sync/connection problem.
+try {
+  initApp();
+} catch (e) {
+  console.error('[POS] App failed to start:', e);
+  document.body.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;gap:12px;font-family:-apple-system,sans-serif;">
+      <div style="font-size:15px;font-weight:600;">Something went wrong loading the app</div>
+      <div style="font-size:13px;color:#888;max-width:420px;">${e.message.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+      <button onclick="localStorage.removeItem('pos_v2');location.reload();"
+        style="margin-top:8px;padding:8px 16px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:13px;">
+        Clear local data &amp; reload
+      </button>
+    </div>`;
+}
+
+// ══════════════════════════════════════
+// SETUP BANNER (shown when not configured)
+// ══════════════════════════════════════
+function showSetupBanner(kind, detail) {
+  const existing = document.getElementById('pos-setup-banner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'pos-setup-banner';
+  banner.style.cssText = 'background:var(--warn-bg);color:var(--warn-text);border-bottom:0.5px solid var(--warn-border);padding:10px 20px;font-size:13px;display:flex;align-items:center;gap:10px;';
+  const escLocal = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const msg = kind === 'not-configured'
+    ? '<strong>Offline mode</strong> — Firebase databaseURL not set. Data saves on this device only. Open <code>index.html</code>, paste your Database URL, and set Realtime Database Rules to enable cross-device sync.'
+    : `<strong>Sync error</strong> — ${escLocal(detail||'Could not connect to Firebase.')} Data still saves safely on this device, it just won't sync to others yet.`;
+  banner.innerHTML = `<i class="ti ti-alert-triangle" style="font-size:16px;flex-shrink:0;"></i><span>${msg}</span>`;
+  document.body.prepend(banner);
+}
+
+let currentSyncStatus = 'offline';
+function syncColor(status) { return status === 'online' ? 'var(--success-text)' : status === 'error' ? 'var(--danger-text)' : 'var(--warn-text)'; }
+function setSyncStatus(status, detail) {
+  currentSyncStatus = status;
+  document.querySelectorAll('.sync-dot').forEach(d => {
+    d.style.background = syncColor(status);
+    d.title = status === 'online' ? 'Firebase connected — live sync active across all devices'
+      : status === 'error' ? ('Sync error: ' + (detail||'unknown')) : 'Offline — this device only';
+  });
+  const lbl = document.getElementById('sync-label');
+  if (lbl) lbl.textContent = status === 'online' ? 'Live' : status === 'error' ? 'Error' : 'Offline';
+}
+
+// ══════════════════════════════════════
+// STATE CHANGE HANDLER
+// ══════════════════════════════════════
+function onStateChange(fromRemote = false) {
+  if (fromRemote) {
+    // Flash dots to show incoming update
+    document.querySelectorAll('.sync-dot').forEach(d => {
+      const orig = d.style.background;
+      d.style.background = 'var(--accent)';
+      setTimeout(() => d.style.background = syncColor(currentSyncStatus), 500);
+    });
+  }
+  renderViewer();
+  if (document.getElementById('app-screen').style.display !== 'none') {
+    renderMenu(); renderCart();
+    if (document.getElementById('panel-products').classList.contains('active')) renderProducts();
+    if (document.getElementById('panel-sales').classList.contains('active')) renderSales();
+  }
+}
+
+// ══════════════════════════════════════
+// ALL APP LOGIC — runs after Firebase setup
+// ══════════════════════════════════════
+function initApp() {
+
+// ══════════════════════════════════════
+// AUTH — MODAL
+// ══════════════════════════════════════
+window.openLoginModal = function() {
+  document.getElementById('login-modal').classList.add('open');
+  setTimeout(() => document.getElementById('login-user').focus(), 100);
+}
+
+window.closeLoginModal = function() {
+  document.getElementById('login-modal').classList.remove('open');
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+window.closeModalIfBackdrop = function(e) {
+  if (e.target === document.getElementById('login-modal')) closeLoginModal();
+}
+
+window.doLogin = function() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+
+  if (user !== ADMIN_CREDENTIALS.username || pass !== ADMIN_CREDENTIALS.password) {
+    errEl.textContent = 'Incorrect username or password.';
+    errEl.style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    return;
+  }
+
+  errEl.style.display = 'none';
+  closeLoginModal();
+  sessionStorage.setItem('pos_admin', '1');
+  showAdmin();
+}
+
+window.adminLogout = function() {
+  sessionStorage.removeItem('pos_admin');
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('viewer-screen').style.display = 'flex';
+  renderViewer();
+  toast('Logged out');
+}
+
+window.showAdmin = function() {
+  document.getElementById('viewer-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  renderMenu(); renderCart();
+}
+
+// ══════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════
+function fmt(n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function cartTotal() { return state.cart.reduce((s,i)=>s+i.price*i.qty,0); }
+
+// ══════════════════════════════════════
+// CART
+// ══════════════════════════════════════
+window.addToCart = function(id) {
+  const p = state.products.find(p=>p.id===id);
+  if (!p) return;
+  if ((p.stock??Infinity) <= 0) { toast('Out of stock!'); return; }
+  const ex = state.cart.find(i=>i.id===id);
+  if (ex) {
+    if (ex.qty >= (p.stock??Infinity)) { toast('Not enough stock!'); return; }
+    ex.qty++;
+  } else {
+    state.cart.push({id:p.id,name:p.name,price:p.price,qty:1});
+  }
+  saveState(); renderCart(); toast('Added ' + p.name);
+}
+
+window.changeQty = function(id, delta) {
+  const item = state.cart.find(i=>i.id===id);
+  if (!item) return;
+  if (delta > 0) {
+    const p = state.products.find(p=>p.id===id);
+    if (p && item.qty >= (p.stock??Infinity)) { toast('Not enough stock!'); return; }
+  }
+  item.qty += delta;
+  if (item.qty <= 0) state.cart = state.cart.filter(i=>i.id!==id);
+  saveState(); renderCart();
+}
+
+window.removeFromCart = function(id) { state.cart = state.cart.filter(i=>i.id!==id); saveState(); renderCart(); }
+window.clearCart = function() { if (!state.cart.length) return; state.cart=[]; saveState(); renderCart(); }
+
+window.checkout = function() {
+  if (!state.cart.length) { toast('Order is empty'); return; }
+  state.cart.forEach(ci => {
+    const p = state.products.find(p=>p.id===ci.id);
+    if (p && p.stock !== undefined) p.stock = Math.max(0, p.stock - ci.qty);
+  });
+  const t = cartTotal();
+  state.transactions.push({ time: new Date().toISOString(), items: state.cart.map(i=>({...i})), total: t });
+  state.cart = [];
+  saveState(); renderCart(); renderMenu();
+  toast('✓ Payment — ' + fmt(t));
+  if (document.getElementById('panel-sales').classList.contains('active')) renderSales();
+  if (document.getElementById('panel-products').classList.contains('active')) renderProducts();
+}
+
+function renderCart() {
+  const el = document.getElementById('cart-display');
+  if (!el) return;
+  if (!state.cart.length) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-shopping-cart-off"></i>No items yet<br><span style="font-size:12px;color:var(--text3)">Tap a product to add</span></div>';
+  } else {
+    el.innerHTML = state.cart.map(i=>`
+      <div class="cart-row">
+        <span class="cart-name">${esc(i.name)}</span>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeQty(${i.id},-1)">−</button>
+          <span class="qty-num">${i.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${i.id},1)">+</button>
+        </div>
+        <span class="cart-price">${fmt(i.price*i.qty)}</span>
+        <span class="cart-rm" onclick="removeFromCart(${i.id})"><i class="ti ti-x"></i></span>
+      </div>`).join('');
+  }
+  document.getElementById('total-amt').textContent = fmt(cartTotal());
+}
+
+// ══════════════════════════════════════
+// REGISTER MENU
+// ══════════════════════════════════════
+function renderMenu() {
+  const el = document.getElementById('menu-grid');
+  if (!el) return;
+  const q = (document.getElementById('search-input')?.value||'').toLowerCase().trim();
+  const filtered = state.products.filter(p=>p.name.toLowerCase().includes(q));
+  const label = document.getElementById('menu-label');
+  if (!filtered.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;grid-column:1/-1;padding:1rem 0;">' + (!state.products.length ? 'No products yet. Add some in Products tab.' : 'No items match your search.') + '</div>';
+    if(label) label.textContent = '0 results';
+    return;
+  }
+  if(label) label.textContent = q ? `${filtered.length} result${filtered.length>1?'s':''} for "${q}"` : 'Tap item to add';
+  el.innerHTML = filtered.map(p => {
+    const stock = p.stock ?? Infinity;
+    const isOut = stock <= 0;
+    const isLow = stock > 0 && stock <= 5;
+    const sc = isOut ? 'stock-out' : isLow ? 'stock-low' : 'stock-ok';
+    const sl = isOut ? 'Out of stock' : `Stock: ${stock}`;
+    return `<div class="item-card${isOut?' out-of-stock':''}" ${isOut?'':'onclick="addToCart('+p.id+')"'}>
+      <div class="iname">${esc(p.name)}</div>
+      <div class="iprice">${fmt(p.price)}</div>
+      <span class="istock ${sc}">${sl}</span>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════
+// PRODUCTS
+// ══════════════════════════════════════
+function renderProducts() {
+  const el = document.getElementById('product-list');
+  if (!el) return;
+  if (!state.products.length) { el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:1rem 0;">No products yet.</div>'; return; }
+  el.innerHTML = `<div class="box">${state.products.map(p=>{
+    const stock = p.stock ?? 0;
+    const sc = stock<=0?'stock-out':stock<=5?'stock-low':'stock-ok';
+    return `<div class="prod-row">
+      <span style="font-size:13px;font-weight:500;">${esc(p.name)}</span>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <input type="number" value="${p.price}" min="0" style="width:100%;font-size:13px;"
+               onchange="updatePrice(${p.id},this.value)" />
+        <span style="font-size:11px;color:var(--text3);">Rp</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <input type="number" value="${stock}" min="0" style="width:60px;font-size:13px;"
+               onchange="updateStock(${p.id},this.value)" />
+        <span class="istock ${sc}" style="white-space:nowrap;">${stock<=0?'Out':stock<=5?'Low':'OK'}</span>
+      </div>
+      <button class="btn btn-danger" style="padding:5px 9px;font-size:12px;" onclick="deleteProduct(${p.id})"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+window.addProduct = function() {
+  const name = document.getElementById('new-name').value.trim();
+  const price = parseFloat(document.getElementById('new-price').value);
+  const stock = parseInt(document.getElementById('new-stock').value)||0;
+  if (!name||isNaN(price)||price<0) { toast('Enter a valid name and price'); return; }
+  state.products.push({id:state.nextId++,name,price,stock});
+  document.getElementById('new-name').value='';
+  document.getElementById('new-price').value='';
+  document.getElementById('new-stock').value='';
+  saveState(); renderProducts(); renderMenu(); toast('Added '+name);
+}
+
+window.updatePrice = function(id,val) {
+  const p=state.products.find(p=>p.id===id);
+  if(p){p.price=parseFloat(val)||0;saveState();renderMenu();}
+}
+
+window.updateStock = function(id,val) {
+  const p=state.products.find(p=>p.id===id);
+  if(p){p.stock=parseInt(val)||0;saveState();renderMenu();renderProducts();}
+}
+
+window.deleteProduct = function(id) {
+  state.products=state.products.filter(p=>p.id!==id);
+  state.cart=state.cart.filter(i=>i.id!==id);
+  saveState();renderProducts();renderMenu();renderCart();
+}
+
+// ══════════════════════════════════════
+// SALES
+// ══════════════════════════════════════
+function todayTxns() {
+  const today=new Date().toDateString();
+  return state.transactions.filter(t=>new Date(t.time).toDateString()===today);
+}
+
+window.adjustSalesItem = function(name,delta) {
+  const today=new Date().toDateString();
+  const tds=state.transactions.filter(t=>new Date(t.time).toDateString()===today);
+  if(!tds.length)return;
+  const price=(()=>{for(const t of tds){const f=t.items.find(i=>i.name===name);if(f)return f.price;}const p=state.products.find(p=>p.name===name);return p?p.price:0;})();
+  if(delta>0){
+    const last=tds[tds.length-1];const ex=last.items.find(i=>i.name===name);
+    if(ex)ex.qty++;else last.items.push({id:Date.now(),name,price,qty:1});
+    last.total+=price;
+  }else{
+    for(let k=tds.length-1;k>=0;k--){
+      const t=tds[k];const item=t.items.find(i=>i.name===name);
+      if(item&&item.qty>0){item.qty--;t.total=Math.max(0,t.total-price);if(item.qty===0)t.items=t.items.filter(i=>i.name!==name);break;}
+    }
+  }
+  state.transactions=state.transactions.filter(t=>t.items.length>0);
+  saveState();renderSales();toast((delta>0?'+1 ':'-1 ')+name);
+}
+
+function renderSales() {
+  const txns=todayTxns();
+  const totalIncome=txns.reduce((s,t)=>s+t.total,0);
+  const itemMap={};
+  txns.forEach(t=>t.items.forEach(i=>{
+    if(!itemMap[i.name])itemMap[i.name]={qty:0,rev:0};
+    itemMap[i.name].qty+=i.qty;itemMap[i.name].rev+=i.price*i.qty;
+  }));
+  const items=Object.entries(itemMap).sort((a,b)=>b[1].rev-a[1].rev);
+  const totalQty=items.reduce((s,[,v])=>s+v.qty,0);
+
+  document.getElementById('summary-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Total income</div><div class="metric-val">${fmt(totalIncome)}</div></div>
+    <div class="metric"><div class="metric-label">Orders today</div><div class="metric-val">${txns.length}</div></div>
+    <div class="metric"><div class="metric-label">Items sold</div><div class="metric-val">${totalQty}</div></div>
+    <div class="metric"><div class="metric-label">Avg. order</div><div class="metric-val">${txns.length?fmt(totalIncome/txns.length):'Rp 0'}</div></div>`;
+
+  if(!items.length){
+    document.getElementById('items-sold-list').innerHTML='<div style="color:var(--text3);font-size:13px;padding:1rem 0;">No sales recorded today.</div>';
+    document.getElementById('income-chart').innerHTML='';
+    document.getElementById('chart-label').style.display='none';
+  }else{
+    document.getElementById('items-sold-list').innerHTML=`<div class="box" style="margin-bottom:1.25rem;">
+      <div class="box-head" style="grid-template-columns:1fr auto auto auto;"><span>Item</span><span>Adjust</span><span style="text-align:center;">Qty</span><span style="text-align:right;">Revenue</span></div>
+      ${items.map(([name,{qty,rev}])=>`
+        <div class="box-row" style="grid-template-columns:1fr auto auto auto;align-items:center;">
+          <span>${esc(name)}</span>
+          <span style="display:flex;gap:4px;">
+            <button class="qty-btn" onclick="adjustSalesItem('${esc(name)}',-1)">−</button>
+            <button class="qty-btn" onclick="adjustSalesItem('${esc(name)}',1)">+</button>
+          </span>
+          <span style="text-align:center;color:var(--text2);min-width:28px;">${qty}</span>
+          <span style="text-align:right;font-weight:500;">${fmt(rev)}</span>
+        </div>`).join('')}
+    </div>`;
+    const maxRev=Math.max(...items.map(([,v])=>v.rev));
+    document.getElementById('chart-label').style.display='';
+    document.getElementById('income-chart').innerHTML=items.map(([name,{rev}])=>`
+      <div class="chart-row">
+        <span class="chart-label">${esc(name)}</span>
+        <div class="chart-track"><div class="chart-fill" style="width:${Math.round(rev/maxRev*100)}%"></div></div>
+        <span class="chart-val">${fmt(rev)}</span>
+      </div>`).join('');
+  }
+
+  document.getElementById('txn-list').innerHTML = !txns.length
+    ? '<div style="color:var(--text3);font-size:13px;padding:0.5rem 0;">No transactions yet.</div>'
+    : `<div class="box">${[...txns].reverse().map(t=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:0.5px solid var(--border);font-size:12px;">
+          <span style="color:var(--text3);">${new Date(t.time).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})} — ${t.items.map(i=>i.name+(i.qty>1?' x'+i.qty:'')).join(', ')}</span>
+          <span style="display:flex;align-items:center;gap:8px;"><span class="badge">Paid</span><span style="font-weight:500;">${fmt(t.total)}</span></span>
+        </div>`).join('')}</div>`;
+}
+
+// ══════════════════════════════════════
+// VIEWER RENDER
+// ══════════════════════════════════════
+let prevTotal = null;
+function renderViewer() {
+  const txns = todayTxns();
+  const totalIncome = txns.reduce((s,t)=>s+t.total,0);
+  const totalItems  = txns.reduce((s,t)=>t.items.reduce((ss,i)=>ss+i.qty,0)+s,0);
+  const avgOrder    = txns.length ? totalIncome/txns.length : 0;
+
+  const amtEl = document.getElementById('v-total');
+  if (amtEl) {
+    amtEl.textContent = fmt(totalIncome);
+    if (prevTotal !== null && totalIncome !== prevTotal) {
+      amtEl.classList.add('flash');
+      setTimeout(() => amtEl.classList.remove('flash'), 800);
+    }
+    prevTotal = totalIncome;
+  }
+  const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  set('v-orders',  txns.length + ' order' + (txns.length!==1?'s':'') + ' today');
+  set('v-items',   totalItems);
+  set('v-avg',     fmt(avgOrder));
+  set('v-products',state.products.length);
+  set('v-updated', 'Last updated: ' + new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+}
+
+// ══════════════════════════════════════
+// TABS
+// ══════════════════════════════════════
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['register','products','sales'][i]===tab));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab==='products') renderProducts();
+  if(tab==='sales') renderSales();
+}
+
+// ══════════════════════════════════════
+// TOAST & CLOCK
+// ══════════════════════════════════════
+let toastTimer;
+window.toast = function(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.opacity='1';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.style.opacity='0',2200);
+}
+
+function updateClock() {
+  const now=new Date().toLocaleString('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  ['viewer-clock','admin-clock'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=now;});
+}
+setInterval(updateClock,15000);
+updateClock();
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+// Viewer is default
+renderViewer();
+// Restore admin session if still active
+if (sessionStorage.getItem('pos_admin')) showAdmin();
+
+} // end initApp()
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', ()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>

@@ -85,6 +85,23 @@
   .login-error { background: var(--danger-bg); color: var(--danger-text); border: 0.5px solid var(--danger-border); border-radius: var(--radius); padding: 8px 12px; font-size: 13px; margin-bottom: 1rem; display: none; }
   .modal-actions { display: flex; gap: 8px; margin-top: 4px; }
 
+  /* ─── PAYMENT MODAL ─── */
+  .pay-total-row { display:flex; justify-content:space-between; align-items:baseline; background:var(--bg2,rgba(0,0,0,0.03)); border-radius:var(--radius); padding:12px 14px; margin-bottom:1rem; }
+  .pay-total-row .pay-total-label { font-size:12px; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em; font-weight:500; }
+  .pay-total-row .pay-total-amt { font-size:20px; font-weight:700; }
+  .quick-cash { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:1rem; }
+  .quick-cash button { padding:8px 4px; font-size:12.5px; border-radius:var(--radius); border:0.5px solid var(--border2); background:var(--bg); color:var(--text); cursor:pointer; font-family:inherit; }
+  .quick-cash button:hover { border-color:var(--accent); color:var(--accent); }
+  .quick-cash button.exact { grid-column:1 / -1; font-weight:600; background:var(--accent); color:#fff; border-color:var(--accent); }
+  #pay-cash-input { font-size:20px; font-weight:600; text-align:right; padding:10px 12px; }
+  .pay-change-row { display:flex; justify-content:space-between; align-items:baseline; border-radius:var(--radius); padding:14px; margin-top:1rem; transition:background 0.15s; }
+  .pay-change-row.ok { background:var(--success-bg); border:0.5px solid var(--success-border); }
+  .pay-change-row.short { background:var(--danger-bg); border:0.5px solid var(--danger-border); }
+  .pay-change-row .pay-change-label { font-size:13px; font-weight:600; }
+  .pay-change-row.ok .pay-change-label, .pay-change-row.ok .pay-change-amt { color:var(--success-text); }
+  .pay-change-row.short .pay-change-label, .pay-change-row.short .pay-change-amt { color:var(--danger-text); }
+  .pay-change-row .pay-change-amt { font-size:22px; font-weight:700; }
+
   /* ─── VIEWER SCREEN ─── */
   #viewer-screen { display: flex; flex-direction: column; min-height: 100vh; }
   .viewer-body {
@@ -252,6 +269,41 @@
 </div>
 
 <!-- ══════════════════════════════════════
+     PAYMENT MODAL
+══════════════════════════════════════ -->
+<div class="modal-backdrop" id="payment-modal" onclick="closeModalIfBackdrop(event)">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-cash" style="color:var(--success-text);"></i> Payment</div>
+    <div class="modal-sub">Enter the cash received from the customer.</div>
+
+    <div class="pay-total-row">
+      <span class="pay-total-label">Total due</span>
+      <span class="pay-total-amt" id="pay-total-amt">Rp 0</span>
+    </div>
+
+    <div class="form-group">
+      <label>Cash received</label>
+      <input type="number" id="pay-cash-input" placeholder="0" min="0" inputmode="numeric"
+             oninput="updatePaymentCalc()" onkeydown="if(event.key==='Enter') confirmPayment()" />
+    </div>
+
+    <div class="quick-cash" id="quick-cash-grid"></div>
+
+    <div class="pay-change-row short" id="pay-change-row">
+      <span class="pay-change-label" id="pay-change-label">Change</span>
+      <span class="pay-change-amt" id="pay-change-amt">Rp 0</span>
+    </div>
+
+    <div class="modal-actions" style="margin-top:1rem;">
+      <button class="btn" style="flex:1;justify-content:center;" onclick="closePaymentModal()">Cancel</button>
+      <button class="btn btn-success" style="flex:1;justify-content:center;" id="pay-confirm-btn" onclick="confirmPayment()" disabled>
+        <i class="ti ti-check"></i> Confirm Payment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      ADMIN APP SCREEN
 ══════════════════════════════════════ -->
 <div id="app-screen">
@@ -329,7 +381,7 @@
         <hr>
         <div class="sum-total"><span>Total</span><span id="total-amt">Rp 0</span></div>
         <hr>
-        <button class="btn btn-success" style="width:100%;margin-top:8px;padding:10px;justify-content:center;" onclick="checkout()">
+        <button class="btn btn-success" style="width:100%;margin-top:8px;padding:10px;justify-content:center;" onclick="openPaymentModal()">
           <i class="ti ti-check"></i> Charge & Complete
         </button>
         <button class="btn btn-danger" style="width:100%;margin-top:6px;justify-content:center;" onclick="clearCart()">
@@ -620,6 +672,7 @@ window.closeLoginModal = function() {
 
 window.closeModalIfBackdrop = function(e) {
   if (e.target === document.getElementById('login-modal')) closeLoginModal();
+  if (e.target === document.getElementById('payment-modal')) closePaymentModal();
 }
 
 window.doLogin = function() {
@@ -693,17 +746,76 @@ window.changeQty = function(id, delta) {
 window.removeFromCart = function(id) { state.cart = state.cart.filter(i=>i.id!==id); saveState(); renderCart(); }
 window.clearCart = function() { if (!state.cart.length) return; state.cart=[]; saveState(); renderCart(); }
 
-window.checkout = function() {
+window.checkout = window.openPaymentModal = function() {
   if (!state.cart.length) { toast('Order is empty'); return; }
+  const total = cartTotal();
+  document.getElementById('pay-total-amt').textContent = fmt(total);
+
+  // Quick-cash suggestions: round the total up to common note sizes
+  const steps = [5000, 10000, 20000, 50000, 100000];
+  const opts = [...new Set(steps.map(s => Math.ceil(total / s) * s).filter(v => v > 0))]
+    .sort((a,b) => a-b).slice(0, 5);
+  document.getElementById('quick-cash-grid').innerHTML =
+    `<button class="exact" onclick="setQuickCash(${total})">Exact — ${fmt(total)}</button>` +
+    opts.map(v => `<button onclick="setQuickCash(${v})">${fmt(v)}</button>`).join('');
+
+  const input = document.getElementById('pay-cash-input');
+  input.value = '';
+  document.getElementById('payment-modal').classList.add('open');
+  updatePaymentCalc();
+  setTimeout(() => input.focus(), 100);
+}
+
+window.closePaymentModal = function() {
+  document.getElementById('payment-modal').classList.remove('open');
+}
+
+window.setQuickCash = function(amount) {
+  document.getElementById('pay-cash-input').value = amount;
+  updatePaymentCalc();
+}
+
+window.updatePaymentCalc = function() {
+  const total = cartTotal();
+  const cash = parseFloat(document.getElementById('pay-cash-input').value) || 0;
+  const diff = cash - total;
+  const row = document.getElementById('pay-change-row');
+  const label = document.getElementById('pay-change-label');
+  const amt = document.getElementById('pay-change-amt');
+  const btn = document.getElementById('pay-confirm-btn');
+  if (diff >= 0) {
+    row.className = 'pay-change-row ok';
+    label.textContent = 'Change';
+    amt.textContent = fmt(diff);
+    btn.disabled = false;
+  } else {
+    row.className = 'pay-change-row short';
+    label.textContent = 'Still short';
+    amt.textContent = fmt(Math.abs(diff));
+    btn.disabled = true;
+  }
+}
+
+window.confirmPayment = function() {
+  if (!state.cart.length) { closePaymentModal(); return; }
+  const total = cartTotal();
+  const cash = parseFloat(document.getElementById('pay-cash-input').value) || 0;
+  if (cash < total) { toast('Cash given is less than the total!'); return; }
+  const change = cash - total;
+
   state.cart.forEach(ci => {
     const p = state.products.find(p=>p.id===ci.id);
     if (p && p.stock !== undefined) p.stock = Math.max(0, p.stock - ci.qty);
   });
-  const t = cartTotal();
-  state.transactions.push({ time: new Date().toISOString(), items: state.cart.map(i=>({...i})), total: t });
+  state.transactions.push({
+    time: new Date().toISOString(),
+    items: state.cart.map(i=>({...i})),
+    total, cashGiven: cash, change
+  });
   state.cart = [];
   saveState(); renderCart(); renderMenu();
-  toast('✓ Payment — ' + fmt(t));
+  closePaymentModal();
+  toast(`✓ ${fmt(total)} − ${fmt(cash)} = ${fmt(change)} change`);
   if (document.getElementById('panel-sales').classList.contains('active')) renderSales();
   if (document.getElementById('panel-products').classList.contains('active')) renderProducts();
 }

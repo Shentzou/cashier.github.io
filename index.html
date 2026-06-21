@@ -851,7 +851,7 @@ function renderCart() {
 }
 
 // ─── REGISTER MENU ───
-function renderMenu() {
+window.renderMenu = function renderMenu() {
   const el = document.getElementById('menu-grid');
   if (!el) return;
   const q = (document.getElementById('search-input')?.value||'').toLowerCase().trim();
@@ -876,7 +876,7 @@ function renderMenu() {
 }
 
 // ─── PRODUCTS (dev only) ───
-function renderProducts() {
+window.renderProducts = function renderProducts() {
   const el = document.getElementById('product-list');
   if (!el) return;
   const q = (document.getElementById('product-search')?.value||'').toLowerCase().trim();

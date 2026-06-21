@@ -1,4 +1,4 @@
-const CACHE = 'cashier-pos-v3';
+const CACHE = 'cashier-pos-v4';
 const ASSETS = [
   './',
   './index.html',

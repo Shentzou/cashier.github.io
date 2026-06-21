@@ -419,7 +419,7 @@ import { getDatabase, ref, onValue, set, get }
 const firebaseConfig = {
     apiKey: "AIzaSyBpyEvqMc8pejK7OzhcIwNF7tNnltz39Zs",
     authDomain: "kasir-99f9e.firebaseapp.com",
-    databaseURL: "https://kasir-d934b-default-rtdb.asia-southeast1.firebasedatabase.app/",
+    databaseURL: "https://kasir-d934b-default-rtdb.asia-southeast1.firebasedatabase.app/,
     projectId: "kasir-99f9e",
     storageBucket: "kasir-99f9e.firebasestorage.app",
     messagingSenderId: "394227755846",
@@ -582,6 +582,38 @@ if (NOT_CONFIGURED) {
     localOnlyFallback('Firebase init failed — this device only.');
   }
 }
+
+// ══════════════════════════════════════
+// AUTO-REFRESH SAFETY NET
+// onValue() and BroadcastChannel already push updates instantly — this is
+// just a background backup in case a connection silently drops, so the
+// viewer screen (or any screen) never needs a manual reload to catch up.
+// ══════════════════════════════════════
+async function pollForUpdates() {
+  if (isWriting) return; // don't clobber a write that's still in flight
+  try {
+    let incoming = null;
+    if (fbRef) {
+      const snap = await get(fbRef);
+      if (snap.exists()) incoming = snap.val();
+    } else {
+      incoming = lsLoad();
+    }
+    if (!incoming) return;
+    const normalized = normalizeState(incoming);
+    if (JSON.stringify(normalized) !== JSON.stringify(state)) {
+      state = normalized;
+      lsSave(state);
+      onStateChange(true);
+    }
+  } catch (e) {
+    // Silent — this is only a backup check; real connection errors are
+    // already surfaced via the sync banner/status dot.
+  }
+}
+setInterval(pollForUpdates, 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pollForUpdates(); });
+window.addEventListener('focus', () => pollForUpdates());
 
 // Start the app itself in its own try/catch, completely separate from Firebase
 // setup above — so a bug here is never confused with a sync/connection problem.
